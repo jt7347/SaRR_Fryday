@@ -24,8 +24,6 @@ int rForward, lForward, rBack, lBack; // Constants for forward/backward PWM for 
 // For open loop drive
 int AddRight;
 int AddLeft;
-// align sensitivity
-int alignDiff;
 // Chute Variables
 const int sharpLeftPin = A6;
 const int sharpRightPin = A7;
@@ -72,10 +70,8 @@ void setup() {
   rBack = 1340;
   lBack = 1340;
   // chute sensitivity
-  chuteProxSensitivity = 100;
+  chuteProxSensitivity = 90;
   lightSensitivity = 125;
-  // align sensitivity
-  alignDiff = 30;
 
   //Flash the LED on and Off 10x before entering main loop
   for (int i = 0; i < 10; i++) {
@@ -103,15 +99,13 @@ void ChCheck() {
   if (Ch5 > 1600) {
     digitalWrite(LED, HIGH);
     if (!init) {
-      initialize(5000); // spot turn for x seconds to turn 180 degrees
+      initialize(4450); // spot turn for x seconds to turn 180 degrees
       init = true;
     }
-    if (!inChute) {
-      rForward = 1560;
-      lForward = 1560;
-      lightSensitivity = 100;
-    }
-    else {
+    rForward = 1565;
+    lForward = 1560;
+    lightSensitivity = 100;
+    if (inChute) {
       rForward = 1580;
       lForward = 1580;
       lightSensitivity = 125;
@@ -247,16 +241,16 @@ void checkSensors()
   // chute
   // Left and Right sharps for chute
   sharpLeft = analogRead(sharpLeftPin);
-  for (int i = 0; i <= 3; i++) {
+  for (int i = 0; i <= 5; i++) {
     sharpLeft = sharpLeft + analogRead(sharpLeftPin);
   }
-  sharpLeft = sharpLeft / 5;
+  sharpLeft = sharpLeft / 7;
   // Iteration to average values
   sharpRight = analogRead(sharpRightPin);
-  for (int i = 0; i <= 3; i++) {
+  for (int i = 0; i <= 5; i++) {
     sharpRight = sharpRight + analogRead(sharpRightPin);
   }
-  sharpRight = sharpRight / 5;
+  sharpRight = sharpRight / 7;
   // Find difference
   proxDiff = abs(sharpLeft - sharpRight); // looking for threshold
   // printSensors();
@@ -301,18 +295,18 @@ void autonomousChute() {
   Serial.println("doing chute!");
   checkSensors();
   if (overWall == false) {
-    if ((FLsharpVal >= 350) && (FRsharpVal >= 350)) {
+    if ((FLsharpVal >= 375) && (FRsharpVal >= 375)) {
       Serial.println("Traversing Wall!");
       Brake(1000);
       // Fxn for climbing wall ~ time to go forward for, and pwm signal to send
-      climbWall(2750, 1600);
-      Brake(1000);
+      climbWall(3000, 1600);
+      Brake(1500);
       climbWall(4000, 1575);
       Brake(1000); // signal finish over wall, wait 5 seconds before continue
       overWall = true;
     }
   }
-  if ((sharpLeft >= 200) && (sharpRight >= 200)) {
+  if ((sharpLeft >= 240) && (sharpRight >= 240)) {
     inChute = true;
     Serial.println("inside chute!");
   }
@@ -327,11 +321,11 @@ void autonomousChute() {
   }
   else {
     if (proxDiff > chuteProxSensitivity) {
-      if (sharpLeft > sharpRight) { 
+      if (((sharpLeft > sharpRight) && (sharpLeft > 240)) && (sharpRight > 150)) { 
         Serial.println("Turn Right!");
         TRightPivot(10, 1);
       }
-      else {
+      if (((sharpLeft < sharpRight) && (sharpRight > 240)) && (sharpLeft > 150)) {
         Serial.println("Turn Left!");
         TLeftPivot(10, 1);
       }
@@ -403,7 +397,7 @@ void Brake(int Dlay)
   delay(Dlay);
 }
 void initialize(int Dlay){
-  spotLeft(Dlay);
+  spotRight(Dlay);
   Brake(500);
 }
 
@@ -414,6 +408,7 @@ void printSensors() {
   Serial.println("Difference Value = " + (String)valDif);
   Serial.println("Left Sharp Value = " + (String)sharpLeft);
   Serial.println("Right Sharp Value = " + (String)sharpRight);
+  Serial.println("Prox Diff = " + (String)proxDiff);
   Serial.println("Front Left Sharp Value = " + (String)FLsharpVal);
   Serial.println("Front Right Sharp Value = " + (String)FRsharpVal);
   Serial.println(" ");
